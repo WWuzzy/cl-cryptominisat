@@ -39,13 +39,13 @@
   (self (:pointer (:struct SATSolver))))
 
 
-; Define the Lisp interface.
 
+; Helper methods.
 (defun encode-literal (literal)
   "Encode literal to a single integer as expected by cryptominisat."
   (+ (* 2 (car literal)) (if (cadr literal) 1 0)))
 
-(defun create-clause (literals)
+(defun create-c-clause (literals)
   "Create a clause from a list of the given literals.
 
    A literal is itself a list of the form (number, is_inverted).
@@ -58,31 +58,67 @@
       (setf i (1+ i)))
   clause))
 
+; Define the Lisp interface.
+
+(defun create-solver ()
+  "Create a new instance of SAT solver."
+  (cmsat-new))
+
+(defun add-new-vars (solver cnt)
+  "Add <cnt> new vars to the solver"
+  (cmsat-new-vars solver cnt))
+
+(defun set-num-threads (solver cnt)
+  "Set the number of threads."
+  (cmsat-set-num-threads solver cnt))
+
+(defun add-clause (solver clause)
+  "Add a clause to the solver.
+
+   The clause should be a list of literals.
+
+   Literals are represented by lists of the form '(<literal_id>, <is_inverted>), where:
+
+   <literal_id> is a non-negative integer
+   <is_inverted> is an optional argument; if True, the literal is considered negative,
+        otherwise it is positive.
+  "
+  (cmsat-add-clause solver (create-c-clause clause) (length clause)))
+
+(defun solve (solver)
+  "Call the solution routine."
+  (getf (cmsat-solve solver) 'x))
+
+(defun get-model (solver)
+  "Get model satysfying the problem.
+
+   Solution is a list of boolean values (T or NIL) corresponding to the
+   individual literals.
+  "
+  ; TODO: decode l_True/l_False
+  (let* ((model (cmsat-get-model solver))
+         (num-vals (getf model 'num-vals)))
+    (loop for i from 0 to (1- num-vals)
+          collect (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool i) 'c-lbool 'x))))
+
 
 ; Use the interface
 (defvar solver)
-(setq solver (cmsat-new))
-(cmsat-set-num-threads solver 3)
-(cmsat-new-vars solver 3)
+(setq solver (create-solver))
+(set-num-threads solver 3)
+(add-new-vars solver 3)
 
 
-(let ((clause1 (create-clause '((0) (1))))
-      (clause2 (create-clause '((0 T) (1))))
-      (clause3 (create-clause '((0) (1 T)))))
-  (cmsat-add-clause solver clause1 2)
-  (cmsat-add-clause solver clause2 2)
-  (cmsat-add-clause solver clause3 2))
+(let ((clause1 '((0) (1)))
+      (clause2 '((0 T) (1)))
+      (clause3 '((0) (1 T))))
+  (add-clause solver clause1)
+  (add-clause solver clause2)
+  (add-clause solver clause3))
 
 
-(let ((solution (cmsat-solve solver)))
-  (format T "Solved: ~A~%" (getf solution 'x)))
-
-(let ((model (cmsat-get-model solver)))
-  (format T "num-vals: ~A~%" (getf model 'num-vals))
-  (format T "vals 0: ~A~%" (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool 0) 'c-lbool 'x))
-  (format T "vals 1: ~A~%" (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool 1) 'c-lbool 'x))
-  (format T "vals 2: ~A~%" (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool 2) 'c-lbool 'x)))
+(format T "Solved: ~A~%" (solve solver))
+(format T "Model: ~{~A~^, ~}~%" (get-model solver))
 
 
-
-(close-foreign-library 'libcryptominisat)
+;(close-foreign-library 'libcryptominisat)
