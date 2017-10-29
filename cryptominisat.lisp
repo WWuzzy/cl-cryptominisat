@@ -5,6 +5,8 @@
   (t (:default "libcryptominisat5.so")))
 (load-foreign-library 'libcryptominisat)
 
+; TODO: add_xor_clause?
+
 ; Describe the C interface.
 
 (defcstruct SATSolver)
@@ -16,11 +18,18 @@
 (defcstruct slice-lbool- (vals (:pointer c-lbool)) (num-vals :uint))
 (defctype slice-lbool (:struct slice-lbool-))
 
+(defcstruct slice-lit- (vals (:pointer c-lit)) (num-vals :uint))
+(defctype slice-lit (:struct slice-lit-))
+
 (defcfun "cmsat_new" (:pointer (:struct SATSolver)))
+
+(defcfun "cmsat_free" :void (solver (:pointer (:struct SATSolver))))
 
 (defcfun "cmsat_set_num_threads"
   :void
   (self (:pointer (:struct SATSolver))) (n :unsigned-int))
+
+(defcfun "cmsat_nvars" :unsigned-int (self (:pointer (:struct SATSolver))))
 
 (defcfun "cmsat_new_vars"
   :void
@@ -34,8 +43,16 @@
   c-lbool
   (self (:pointer (:struct SATSolver))))
 
+(defcfun "cmsat_solve_with_assumptions"
+  c-lbool
+  (self (:pointer (:struct SATSolver))) (assumptions (:pointer c-lit)) (num-assumptions :unsigned-int))
+
 (defcfun "cmsat_get_model"
   slice-lbool
+  (self (:pointer (:struct SATSolver))))
+
+(defcfun "cmsat_get_conflict"
+  slice-lit
   (self (:pointer (:struct SATSolver))))
 
 
@@ -64,6 +81,14 @@
   "Create a new instance of SAT solver."
   (cmsat-new))
 
+(defun destroy-solver (solver)
+  "Destroy solver instance, freeing up the memory."
+  (cmsat-free solver))
+
+(defun get-vars-cnt (solver)
+  "Return the total number of declared SAT variables."
+  (cmsat-nvars solver))
+
 (defun add-new-vars (solver cnt)
   "Add <cnt> new vars to the solver"
   (cmsat-new-vars solver cnt))
@@ -89,6 +114,20 @@
   "Call the solution routine."
   (getf (cmsat-solve solver) 'x))
 
+(defun solve-with-assumptions (solver assumptions)
+  "Call the solution routine, providing the assumptions.
+
+   Assumptions are represented by a list of literals.
+
+   Literals are represented by lists of the form '(<literal_id>, <is_inverted>), where:
+
+   <literal_id> is a non-negative integer
+   <is_inverted> is an optional argument; if True, the literal is considered negative,
+        otherwise it is positive.
+  "
+  ; TODO: rename "create-c-clause" to something else
+  (getf (cmsat-solve-with-assumptions solver (create-c-clause assumptions) (length clause)) 'x))
+
 (defun get-model (solver)
   "Get model satysfying the problem.
 
@@ -100,6 +139,14 @@
          (num-vals (getf model 'num-vals)))
     (loop for i from 0 to (1- num-vals)
           collect (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool i) 'c-lbool 'x))))
+
+(defun get-conflict (solver)
+  "Return the found conflict in the SAT problem."
+  ; TODO: decode literals.
+  (let* ((conflict (cmsat-get-conflict solver))
+         (num-vals (getf conflict 'num-vals)))
+    (loop for i from 0 to (1- num-vals)
+          collect (foreign-slot-value (mem-aref (getf model 'vals) 'c-lit i) 'c-lit 'x))))
 
 
 ; Use the interface
