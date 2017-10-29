@@ -126,7 +126,7 @@
         otherwise it is positive.
   "
   ; TODO: rename "create-c-clause" to something else
-  (getf (cmsat-solve-with-assumptions solver (create-c-clause assumptions) (length clause)) 'x))
+  (getf (cmsat-solve-with-assumptions solver (create-c-clause assumptions) (length assumptions)) 'x))
 
 (defun get-model (solver)
   "Get model satysfying the problem.
@@ -146,7 +146,7 @@
   (let* ((conflict (cmsat-get-conflict solver))
          (num-vals (getf conflict 'num-vals)))
     (loop for i from 0 to (1- num-vals)
-          collect (foreign-slot-value (mem-aref (getf model 'vals) 'c-lit i) 'c-lit 'x))))
+          collect (foreign-slot-value (mem-aref (getf conflict 'vals) 'c-lit i) 'c-lit 'x))))
 
 
 ; Use the interface
