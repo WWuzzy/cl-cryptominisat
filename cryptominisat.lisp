@@ -5,7 +5,9 @@
   (t (:default "libcryptominisat5.so")))
 (load-foreign-library 'libcryptominisat)
 
-; TODO: add_xor_clause?
+; TODO:
+;   - add_xor_clause?
+;   - input validation (parameters as well as uninitialized solver)
 
 ; Describe the C interface.
 
@@ -58,11 +60,23 @@
 
 
 ; Helper methods.
+
+(defun decode-boolean (c-boolean)
+  "Decode cyrptominisats L_True and L_False to T and NIL, respectively."
+  (case c-boolean (0 T)
+                  (1 NIL)
+                  (otherwise (error 'error (format nil "Unexpected boolean value: ~A " c-boolean)))))
+
 (defun encode-literal (literal)
   "Encode literal to a single integer as expected by cryptominisat."
   (+ (* 2 (car literal)) (if (cadr literal) 1 0)))
 
-(defun create-c-clause (literals)
+(defun decode-literal (c-literal-int)
+  "Decode literal from cryptominisats internal representation."
+  (multiple-value-bind (q r) (floor c-literal-int 2)
+    (if (eq r 0) `(,q) `(,q T))))
+
+(defun convert-to-c-literals (literals)
   "Create a clause from a list of the given literals.
 
    A literal is itself a list of the form (number, is_inverted).
@@ -108,11 +122,11 @@
    <is_inverted> is an optional argument; if True, the literal is considered negative,
         otherwise it is positive.
   "
-  (cmsat-add-clause solver (create-c-clause clause) (length clause)))
+  (cmsat-add-clause solver (convert-to-c-literals clause) (length clause)))
 
 (defun solve (solver)
   "Call the solution routine."
-  (getf (cmsat-solve solver) 'x))
+  (decode-boolean (getf (cmsat-solve solver) 'x)))
 
 (defun solve-with-assumptions (solver assumptions)
   "Call the solution routine, providing the assumptions.
@@ -125,47 +139,29 @@
    <is_inverted> is an optional argument; if True, the literal is considered negative,
         otherwise it is positive.
   "
-  ; TODO: rename "create-c-clause" to something else
-  (getf (cmsat-solve-with-assumptions solver (create-c-clause assumptions) (length assumptions)) 'x))
+  (let* ((c-assumptions (convert-to-c-literals assumptions))
+         (solution (cmsat-solve-with-assumptions solver c-assumptions (length assumptions))))
+    (decode-boolean (getf solution 'x))))
 
 (defun get-model (solver)
   "Get model satysfying the problem.
 
-   Solution is a list of boolean values (T or NIL) corresponding to the
-   individual literals.
+   Solution is a list of boolean values (T or NIL) corresponding to truth
+   assignments to the individual literals.
   "
-  ; TODO: decode l_True/l_False
   (let* ((model (cmsat-get-model solver))
          (num-vals (getf model 'num-vals)))
-    (loop for i from 0 to (1- num-vals)
-          collect (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool i) 'c-lbool 'x))))
+    (mapcar #'decode-boolean
+      (loop for i from 0 to (1- num-vals)
+            collect (foreign-slot-value (mem-aref (getf model 'vals) 'c-lbool i) 'c-lbool 'x)))))
 
 (defun get-conflict (solver)
-  "Return the found conflict in the SAT problem."
-  ; TODO: decode literals.
+  "Return conflicts with respect to the provided assumptions."
   (let* ((conflict (cmsat-get-conflict solver))
-         (num-vals (getf conflict 'num-vals)))
-    (loop for i from 0 to (1- num-vals)
-          collect (foreign-slot-value (mem-aref (getf conflict 'vals) 'c-lit i) 'c-lit 'x))))
-
-
-; Use the interface
-(defvar solver)
-(setq solver (create-solver))
-(set-num-threads solver 3)
-(add-new-vars solver 3)
-
-
-(let ((clause1 '((0) (1)))
-      (clause2 '((0 T) (1)))
-      (clause3 '((0) (1 T))))
-  (add-clause solver clause1)
-  (add-clause solver clause2)
-  (add-clause solver clause3))
-
-
-(format T "Solved: ~A~%" (solve solver))
-(format T "Model: ~{~A~^, ~}~%" (get-model solver))
-
+         (num-vals (getf conflict 'num-vals))
+         (vals (getf conflict 'vals)))
+    (mapcar #'decode-literal
+      (loop for i from 0 to (1- num-vals)
+            collect (foreign-slot-value (mem-aref vals 'c-lit i) 'c-lit 'x)))))
 
 ;(close-foreign-library 'libcryptominisat)
