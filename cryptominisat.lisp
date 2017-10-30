@@ -1,9 +1,11 @@
 (in-package :cl-cryptominisat)
 
 (define-foreign-library libcryptominisat
+  (:darwin "libcryptominisat.dylib")
   (:unix "libcryptominisat5.so")
-  (t (:default "libcryptominisat5.so")))
-(load-foreign-library 'libcryptominisat)
+  (t (:default "libcryptominisat5")))
+
+(use-foreign-library libcryptominisat)
 
 ; TODO:
 ;   - add_xor_clause?
@@ -163,5 +165,3 @@
     (mapcar #'decode-literal
       (loop for i from 0 to (1- num-vals)
             collect (foreign-slot-value (mem-aref vals 'c-lit i) 'c-lit 'x)))))
-
-;(close-foreign-library 'libcryptominisat)
