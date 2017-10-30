@@ -53,4 +53,12 @@
   (cl-cryptominisat::solve-with-assumptions solver '((1)))
   (is (cl-cryptominisat::get-conflict solver) '((1 T)) "should return the found conflict"))
 
+(diag "=== add-xor-clause ===")
+(let ((solver (cl-cryptominisat::create-solver)))
+  (cl-cryptominisat::add-new-vars solver 2)
+  (cl-cryptominisat::add-xor-clause solver '(0 1) T)
+  (cl-cryptominisat::add-clause solver '((1 T)))
+  (cl-cryptominisat::solve solver)
+  (is (cl-cryptominisat::get-model solver) '(T NIL) "should add a XOR clause"))
+
 (finalize)

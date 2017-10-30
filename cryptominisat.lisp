@@ -8,7 +8,6 @@
 (use-foreign-library libcryptominisat)
 
 ; TODO:
-;   - add_xor_clause?
 ;   - input validation (parameters as well as uninitialized solver)
 
 ; Describe the C interface.
@@ -42,6 +41,10 @@
 (defcfun "cmsat_add_clause"
   :bool
   (self (:pointer (:struct SATSolver))) (lits (:pointer c-lit)) (n :unsigned-int))
+
+(defcfun "cmsat_add_xor_clause"
+  :bool
+  (self (:pointer (:struct SATSolver))) (vars (:pointer :unsigned-int)) (n :unsigned-int) (rhs :bool))
 
 (defcfun "cmsat_solve"
   c-lbool
@@ -129,6 +132,24 @@
     (foreign-free c-literals)
     result))
 
+(defun add-xor-clause (solver vars rhs)
+  "Add a XOR clause to the solver.
+
+   The XOR clause is specified by
+
+     - a list of vars in the XOR clause (e.g. '(0 1 2 3))
+     - the right hand symbol (T / NIL)
+  "
+  (let* ((i 0)
+         (num-vars (length vars))
+         (clause (foreign-alloc :unsigned-int :count num-vars))
+         (result nil))
+    (dolist (var vars)
+      (setf (mem-aref clause :unsigned-int i) var)
+      (setf i (1+ i)))
+    (setf result (cmsat-add-xor-clause solver clause num-vars rhs))
+    (foreign-free clause)
+    result))
 
 (defun solve (solver)
   "Call the solution routine."
