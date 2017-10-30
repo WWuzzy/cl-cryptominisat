@@ -7,10 +7,6 @@
 (is (cl-cryptominisat::encode-literal '(4)) 8 "should properly encode positive literals")
 (is (cl-cryptominisat::encode-literal '(4 T)) 9 "should properly encode negative literals")
 
-(diag "=== create & destroy solver ===")
-(is (cl-cryptominisat::destroy-solver (cl-cryptominisat::create-solver)) nil
-    "should create and subsequently destroy the solver instance without issues")
-
 (diag "=== get-vars-cnt ===")
 (let ((solver (cl-cryptominisat::create-solver)))
   (cl-cryptominisat::add-new-vars solver 22)
