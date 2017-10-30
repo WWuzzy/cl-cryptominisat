@@ -85,7 +85,7 @@
    The number starts with 0. The second parameter is optional
    and defaults to nil."
 
-  (let ((i 0) (clause (foreign-alloc 'c-lit :count (length literals)))) ; TODO: free
+  (let ((i 0) (clause (foreign-alloc 'c-lit :count (length literals))))
     (dolist (literal literals)
       (setf (foreign-slot-value (mem-aref clause 'c-lit i) 'c-lit 'x) (encode-literal literal))
       (setf i (1+ i)))
@@ -124,7 +124,11 @@
    <is_inverted> is an optional argument; if True, the literal is considered negative,
         otherwise it is positive.
   "
-  (cmsat-add-clause solver (convert-to-c-literals clause) (length clause)))
+  (let* ((c-literals (convert-to-c-literals clause))
+         (result (cmsat-add-clause solver c-literals (length clause))))
+    (foreign-free c-literals)
+    result))
+
 
 (defun solve (solver)
   "Call the solution routine."
