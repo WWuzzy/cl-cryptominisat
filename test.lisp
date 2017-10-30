@@ -27,7 +27,8 @@
   (is (cl-cryptominisat::solve solver) T "should return T when a solution is found")
   (cl-cryptominisat::add-clause solver '((0 T) (1 T)))
   (cl-cryptominisat::add-clause solver '((0) (1 T)))
-  (is (cl-cryptominisat::solve solver) NIL "should return NIL when a solution cannot be found"))
+  (is (cl-cryptominisat::solve solver) NIL "should return NIL when a solution cannot be found")
+  (cl-cryptominisat::destroy-solver solver))
 
 (diag "=== solve-with-assumptions ===")
 (let ((solver (cl-cryptominisat::create-solver)))
@@ -35,7 +36,8 @@
   (cl-cryptominisat::add-clause solver '((0) (1)))
   (cl-cryptominisat::add-clause solver '((0 T) (1)))
   (is (cl-cryptominisat::solve-with-assumptions solver '((1 T))) NIL "should return NIL when a solution cannot be found")
-  (is (cl-cryptominisat::solve-with-assumptions solver '((0 T))) T "should return T when a solution is found"))
+  (is (cl-cryptominisat::solve-with-assumptions solver '((0 T))) T "should return T when a solution is found")
+  (cl-cryptominisat::destroy-solver solver))
 
 (diag "=== get-model ===")
 (let ((solver (cl-cryptominisat::create-solver)))
@@ -43,7 +45,8 @@
   (cl-cryptominisat::add-clause solver '((0 T)))
   (cl-cryptominisat::add-clause solver '((0) (1)))
   (cl-cryptominisat::solve solver)
-  (is (cl-cryptominisat::get-model solver) '(NIL T) "should return the assignment of truth values satisfying the SAT problem"))
+  (is (cl-cryptominisat::get-model solver) '(NIL T) "should return the assignment of truth values satisfying the SAT problem")
+  (cl-cryptominisat::destroy-solver solver))
 
 (diag "=== get-conflict ===")
 (let ((solver (cl-cryptominisat::create-solver)))
@@ -51,7 +54,8 @@
   (cl-cryptominisat::add-clause solver '((0 T)))
   (cl-cryptominisat::add-clause solver '((0) (1 T)))
   (cl-cryptominisat::solve-with-assumptions solver '((1)))
-  (is (cl-cryptominisat::get-conflict solver) '((1 T)) "should return the found conflict"))
+  (is (cl-cryptominisat::get-conflict solver) '((1 T)) "should return the found conflict")
+  (cl-cryptominisat::destroy-solver solver))
 
 (diag "=== add-xor-clause ===")
 (let ((solver (cl-cryptominisat::create-solver)))
@@ -59,6 +63,7 @@
   (cl-cryptominisat::add-xor-clause solver '(0 1) T)
   (cl-cryptominisat::add-clause solver '((1 T)))
   (cl-cryptominisat::solve solver)
-  (is (cl-cryptominisat::get-model solver) '(T NIL) "should add a XOR clause"))
+  (is (cl-cryptominisat::get-model solver) '(T NIL) "should add a XOR clause")
+  (cl-cryptominisat::destroy-solver solver))
 
 (finalize)
