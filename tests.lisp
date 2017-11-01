@@ -1,4 +1,3 @@
-(load "./cryptominisat.lisp")
 (in-package :cl-cryptominisat-test)
 
 (plan nil)
