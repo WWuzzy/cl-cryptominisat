@@ -8,9 +8,11 @@ It has been tested on Linux with SBCL against CryptoMiniSat v5.0.1.
 Theoretically, it should work with other Common Lisp implementations as well as
 operating systems. No such tests were performed, though.
 
-## Prerequisities
+## Prerequisites
 
-The library `libcryptominisat5` should be installed on your system.
+The library `libcryptominisat5` should be installed on your
+system. Also, the Common Lisp packages "cffi" and "cffi-libffi"
+need to be available (you can install them via Quicklisp).
 
 ## Example usage
 
